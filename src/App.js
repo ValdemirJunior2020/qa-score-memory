@@ -1,24 +1,69 @@
-import logo from './logo.svg';
-import './App.css';
+// src/App.js
+import React, { useState } from 'react';
+import { Container, Row, Col, Button } from 'react-bootstrap';
+import Login from './components/Login';
+import QAForm from './components/QAForm';
+import ScoreTable from './components/ScoreTable';
+import ScoreChart from './components/ScoreChart';
+import AgentPieChart from './components/AgentPieChart';
+import { useNavigate } from 'react-router-dom';
 
 function App() {
+  const [user, setUser] = useState(null);
+  const navigate = useNavigate();
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Container className="py-5">
+      {!user ? (
+        <Login setUser={setUser} />
+      ) : (
+        <>
+          {/* Title */}
+          <Row className="mb-4">
+            <Col>
+              <h1 className="text-center">QA Calibration Dashboard</h1>
+            </Col>
+          </Row>
+
+          {/* View Results Button */}
+          <Row className="mb-3">
+            <Col className="text-end">
+              <Button variant="secondary" onClick={() => navigate('/results')}>
+                📄 View All QA Results
+              </Button>
+            </Col>
+          </Row>
+
+          {/* QA Form Centered */}
+          <Row className="mb-4">
+            <Col md={{ span: 8, offset: 2 }}>
+              <QAForm user={user} />
+            </Col>
+          </Row>
+
+          {/* QA Table */}
+          <Row>
+            <Col>
+              <ScoreTable user={user} />
+            </Col>
+          </Row>
+
+          {/* Bar Chart */}
+          <Row>
+            <Col>
+              <ScoreChart />
+            </Col>
+          </Row>
+
+          {/* Pie Chart */}
+          <Row>
+            <Col>
+              <AgentPieChart />
+            </Col>
+          </Row>
+        </>
+      )}
+    </Container>
   );
 }
 
