@@ -6,7 +6,7 @@ import { Button, Form, Alert } from 'react-bootstrap';
 
 const adminEmails = [
   'adminjr@admin.com',
-  'adminbarb@admim.com',
+  'adminbarb@admin.com',
   'adminphill@admin.com'
 ];
 
