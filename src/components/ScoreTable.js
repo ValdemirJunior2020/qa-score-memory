@@ -4,14 +4,12 @@ import {
   collection,
   onSnapshot,
   deleteDoc,
-  doc,
-  updateDoc
+  doc
 } from 'firebase/firestore';
 import {
   Table,
   Form,
   Button,
-  Modal,
   Alert
 } from 'react-bootstrap';
 import * as XLSX from 'xlsx';
@@ -39,8 +37,6 @@ function ScoreTable({ user }) {
   const [filterCenter, setFilterCenter] = useState('');
   const [filterDate, setFilterDate] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [editEntry, setEditEntry] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -53,10 +49,10 @@ function ScoreTable({ user }) {
 
   const filteredEntries = entries.filter((entry) => {
     return (
-      (filterAgent ? entry.agent.toLowerCase().includes(filterAgent.toLowerCase()) : true) &&
-      (filterCenter ? entry.center === filterCenter : true) &&
-      (filterDate ? entry.date === filterDate : true) &&
-      (filterType ? entry.qaType === filterType : true)
+      (!filterAgent || entry.agent.toLowerCase().includes(filterAgent.toLowerCase())) &&
+      (!filterCenter || entry.center === filterCenter) &&
+      (!filterDate || entry.date === filterDate) &&
+      (!filterType || entry.qaType === filterType)
     );
   });
 
@@ -66,24 +62,6 @@ function ScoreTable({ user }) {
       setMessage('Entry deleted successfully!');
       setTimeout(() => setMessage(''), 2000);
     }
-  };
-
-  const openEditModal = (entry) => {
-    setEditEntry({ ...entry });
-    setShowModal(true);
-  };
-
-  const handleEditChange = (field, value) => {
-    setEditEntry({ ...editEntry, [field]: value });
-  };
-
-  const saveEdit = async () => {
-    const ref = doc(db, 'qa_scores', editEntry.id);
-    const { id, ...updateData } = editEntry;
-    await updateDoc(ref, updateData);
-    setMessage('Entry updated successfully!');
-    setShowModal(false);
-    setTimeout(() => setMessage(''), 2000);
   };
 
   const exportToXLSX = () => {
@@ -220,18 +198,17 @@ function ScoreTable({ user }) {
               <td>{entry.date}</td>
               <td>{entry.center}</td>
               <td
-  style={{
-    color:
-      (entry.qaType === 'CS' && entry.score >= 90) ||
-      (entry.qaType === 'Groups' && entry.score >= 85)
-        ? 'green'
-        : 'red',
-    fontWeight: 'bold'
-  }}
->
-  {entry.score}
-</td>
-
+                style={{
+                  color:
+                    (entry.qaType === 'CS' && entry.score >= 90) ||
+                    (entry.qaType === 'Groups' && entry.score >= 85)
+                      ? 'green'
+                      : 'red',
+                  fontWeight: 'bold'
+                }}
+              >
+                {entry.score}
+              </td>
               <td>{entry.callId}</td>
               <td>{entry.requestId}</td>
               <td>{entry.itinerary}</td>
@@ -248,8 +225,7 @@ function ScoreTable({ user }) {
               <td>
                 {entry.createdBy === user.email ? (
                   <>
-                    <Button size="sm" variant="warning" onClick={() => openEditModal(entry)}>Edit</Button>{' '}
-                    <Button size="sm" variant="danger" onClick={() => handleDelete(entry.id)}>Delete</Button>
+                    <Button size="sm" variant="warning" onClick={() => handleDelete(entry.id)}>Delete</Button>
                   </>
                 ) : (
                   <span style={{ color: 'gray', fontStyle: 'italic' }}>View only</span>
