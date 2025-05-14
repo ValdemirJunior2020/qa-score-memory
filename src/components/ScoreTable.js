@@ -4,13 +4,15 @@ import {
   collection,
   onSnapshot,
   deleteDoc,
-  doc
+  doc,
+  updateDoc
 } from 'firebase/firestore';
 import {
   Table,
   Form,
   Button,
-  Alert
+  Alert,
+  Modal
 } from 'react-bootstrap';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
@@ -44,6 +46,8 @@ function ScoreTable({ user }) {
   const [filterDate, setFilterDate] = useState('');
   const [filterType, setFilterType] = useState('');
   const [message, setMessage] = useState('');
+  const [editEntry, setEditEntry] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'qa_scores'), (snapshot) => {
@@ -68,6 +72,24 @@ function ScoreTable({ user }) {
       setMessage('Entry deleted successfully!');
       setTimeout(() => setMessage(''), 2000);
     }
+  };
+
+  const openEditModal = (entry) => {
+    setEditEntry({ ...entry });
+    setShowModal(true);
+  };
+
+  const handleEditChange = (field, value) => {
+    setEditEntry(prev => ({ ...prev, [field]: value }));
+  };
+
+  const saveEdit = async () => {
+    const { id, ...updateData } = editEntry;
+    await updateDoc(doc(db, 'qa_scores', id), updateData);
+    setMessage('Entry updated successfully!');
+    setShowModal(false);
+    setEditEntry(null);
+    setTimeout(() => setMessage(''), 2000);
   };
 
   const exportToXLSX = () => {
@@ -134,6 +156,7 @@ function ScoreTable({ user }) {
         <Button variant="danger" onClick={exportToPDF}>Export to PDF</Button>
       </div>
 
+      {/* Filters */}
       <Form className="mb-3">
         <Form.Group className="mb-2">
           <Form.Label>Filter by Agent</Form.Label>
@@ -174,6 +197,7 @@ function ScoreTable({ user }) {
         </Form.Group>
       </Form>
 
+      {/* Table */}
       <Table striped bordered hover responsive>
         <thead>
           <tr>
@@ -206,16 +230,7 @@ function ScoreTable({ user }) {
                 </td>
                 <td>{entry.date}</td>
                 <td>{entry.center}</td>
-                <td
-                  style={{
-                    color:
-                      (entry.qaType === 'CS' && entry.score >= 90) ||
-                      (entry.qaType === 'Groups' && entry.score >= 85)
-                        ? 'green'
-                        : 'red',
-                    fontWeight: 'bold'
-                  }}
-                >
+                <td style={{ color: (entry.qaType === 'CS' && entry.score >= 90) || (entry.qaType === 'Groups' && entry.score >= 85) ? 'green' : 'red', fontWeight: 'bold' }}>
                   {entry.score}
                 </td>
                 <td>{entry.callId}</td>
@@ -238,7 +253,7 @@ function ScoreTable({ user }) {
                 <td>
                   {canEdit ? (
                     <>
-                      {/* Add edit logic here if needed */}
+                      <Button size="sm" variant="warning" className="me-1" onClick={() => openEditModal(entry)}>Edit</Button>
                       <Button size="sm" variant="danger" onClick={() => handleDelete(entry.id)}>Delete</Button>
                     </>
                   ) : (
@@ -250,6 +265,80 @@ function ScoreTable({ user }) {
           })}
         </tbody>
       </Table>
+
+      {/* Edit Modal */}
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Edit QA Entry</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {editEntry && (
+            <>
+              <Form.Group className="mb-2">
+                <Form.Label>Agent</Form.Label>
+                <Form.Control
+                  value={editEntry.agent}
+                  onChange={(e) => handleEditChange('agent', e.target.value)}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-2">
+                <Form.Label>Date</Form.Label>
+                <Form.Control
+                  type="date"
+                  value={editEntry.date}
+                  onChange={(e) => handleEditChange('date', e.target.value)}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-2">
+                <Form.Label>QA Type</Form.Label>
+                <Form.Select
+                  value={editEntry.qaType}
+                  onChange={(e) => handleEditChange('qaType', e.target.value)}
+                >
+                  <option value="CS">CS</option>
+                  <option value="Groups">Groups</option>
+                </Form.Select>
+              </Form.Group>
+
+              <Form.Group className="mb-2">
+                <Form.Label>Call Center</Form.Label>
+                <Form.Control
+                  value={editEntry.center}
+                  onChange={(e) => handleEditChange('center', e.target.value)}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-2">
+                <Form.Label>Score</Form.Label>
+                <Form.Control
+                  type="number"
+                  value={editEntry.score}
+                  onChange={(e) => handleEditChange('score', e.target.value)}
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-2">
+                <Form.Label>Notes</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  value={editEntry.notes}
+                  onChange={(e) => handleEditChange('notes', e.target.value)}
+                />
+              </Form.Group>
+            </>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={saveEdit}>
+            Save Changes
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 }
