@@ -31,6 +31,12 @@ const originalGuidelines = [
 
 const isOriginal = (text) => originalGuidelines.includes(text);
 
+const adminEmails = [
+  'adminjr@admin.com',
+  'adminbarb@admin.com',
+  'adminphill@admin.com'
+];
+
 function ScoreTable({ user }) {
   const [entries, setEntries] = useState([]);
   const [filterAgent, setFilterAgent] = useState('');
@@ -187,52 +193,61 @@ function ScoreTable({ user }) {
           </tr>
         </thead>
         <tbody>
-          {filteredEntries.map((entry) => (
-            <tr key={entry.id}>
-              <td>{entry.agent}</td>
-              <td>
-                <strong style={{ color: entry.qaType === 'CS' ? 'green' : 'blue' }}>
-                  {entry.qaType}
-                </strong>
-              </td>
-              <td>{entry.date}</td>
-              <td>{entry.center}</td>
-              <td
-                style={{
-                  color:
-                    (entry.qaType === 'CS' && entry.score >= 90) ||
-                    (entry.qaType === 'Groups' && entry.score >= 85)
-                      ? 'green'
-                      : 'red',
-                  fontWeight: 'bold'
-                }}
-              >
-                {entry.score}
-              </td>
-              <td>{entry.callId}</td>
-              <td>{entry.requestId}</td>
-              <td>{entry.itinerary}</td>
-              <td>{entry.callLength}</td>
-              <td>{entry.notes}</td>
-              <td>
-                <ul className="mb-0">
-                  {entry.markdowns?.map((md, i) => (
-                    <li key={i} style={{ color: isOriginal(md) ? 'darkgreen' : 'darkblue' }}>{md}</li>
-                  ))}
-                </ul>
-              </td>
-              <td>{entry.createdBy}</td>
-              <td>
-                {entry.createdBy === user.email ? (
-                  <>
-                    <Button size="sm" variant="warning" onClick={() => handleDelete(entry.id)}>Delete</Button>
-                  </>
-                ) : (
-                  <span style={{ color: 'gray', fontStyle: 'italic' }}>View only</span>
-                )}
-              </td>
-            </tr>
-          ))}
+          {filteredEntries.map((entry) => {
+            const canEdit = adminEmails.includes(user.email) || entry.createdBy === user.email;
+
+            return (
+              <tr key={entry.id}>
+                <td>{entry.agent}</td>
+                <td>
+                  <strong style={{ color: entry.qaType === 'CS' ? 'green' : 'blue' }}>
+                    {entry.qaType}
+                  </strong>
+                </td>
+                <td>{entry.date}</td>
+                <td>{entry.center}</td>
+                <td
+                  style={{
+                    color:
+                      (entry.qaType === 'CS' && entry.score >= 90) ||
+                      (entry.qaType === 'Groups' && entry.score >= 85)
+                        ? 'green'
+                        : 'red',
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {entry.score}
+                </td>
+                <td>{entry.callId}</td>
+                <td>{entry.requestId}</td>
+                <td>{entry.itinerary}</td>
+                <td>{entry.callLength}</td>
+                <td>{entry.notes}</td>
+                <td>
+                  {entry.markdowns && entry.markdowns.length > 0 ? (
+                    <ul className="mb-0">
+                      {entry.markdowns.map((md, i) => (
+                        <li key={i} style={{ color: isOriginal(md) ? 'darkgreen' : 'darkblue' }}>{md}</li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span style={{ color: 'gray', fontStyle: 'italic' }}>None</span>
+                  )}
+                </td>
+                <td>{entry.createdBy}</td>
+                <td>
+                  {canEdit ? (
+                    <>
+                      {/* Add edit logic here if needed */}
+                      <Button size="sm" variant="danger" onClick={() => handleDelete(entry.id)}>Delete</Button>
+                    </>
+                  ) : (
+                    <span style={{ color: 'gray', fontStyle: 'italic' }}>View only</span>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </Table>
     </>
