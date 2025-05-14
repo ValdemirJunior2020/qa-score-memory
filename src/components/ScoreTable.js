@@ -219,7 +219,19 @@ function ScoreTable({ user }) {
               </td>
               <td>{entry.date}</td>
               <td>{entry.center}</td>
-              <td style={{ color: entry.score >= 90 ? 'green' : 'red', fontWeight: 'bold' }}>{entry.score}</td>
+              <td
+  style={{
+    color:
+      (entry.qaType === 'CS' && entry.score >= 90) ||
+      (entry.qaType === 'Groups' && entry.score >= 85)
+        ? 'green'
+        : 'red',
+    fontWeight: 'bold'
+  }}
+>
+  {entry.score}
+</td>
+
               <td>{entry.callId}</td>
               <td>{entry.requestId}</td>
               <td>{entry.itinerary}</td>
