@@ -1,16 +1,29 @@
 // src/App.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Button } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
 import Login from './components/Login';
 import QAForm from './components/QAForm';
 import ScoreTable from './components/ScoreTable';
 import ScoreChart from './components/ScoreChart';
 import AgentPieChart from './components/AgentPieChart';
-import { useNavigate } from 'react-router-dom';
 
 function App() {
-  const [user, setUser] = useState(null);
   const navigate = useNavigate();
+
+  // Persist login with localStorage
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('qa-user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('qa-user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('qa-user');
+    }
+  }, [user]);
 
   return (
     <Container className="py-5">
@@ -18,14 +31,12 @@ function App() {
         <Login setUser={setUser} />
       ) : (
         <>
-          {/* Title */}
           <Row className="mb-4">
             <Col>
               <h1 className="text-center">QA Calibration Dashboard</h1>
             </Col>
           </Row>
 
-          {/* View Results Button */}
           <Row className="mb-3">
             <Col className="text-end">
               <Button variant="secondary" onClick={() => navigate('/results')}>
@@ -34,31 +45,35 @@ function App() {
             </Col>
           </Row>
 
-          {/* QA Form Centered */}
           <Row className="mb-4">
             <Col md={{ span: 8, offset: 2 }}>
-              <QAForm user={user} />
+              <div className="qa-wrapper">
+                <QAForm user={user} />
+              </div>
             </Col>
           </Row>
 
-          {/* QA Table */}
-          <Row>
+          <Row className="mb-5">
             <Col>
-              <ScoreTable user={user} />
+              <div className="qa-wrapper">
+                <ScoreTable user={user} />
+              </div>
             </Col>
           </Row>
 
-          {/* Bar Chart */}
-          <Row>
+          <Row className="mb-5">
             <Col>
-              <ScoreChart />
+              <div className="qa-wrapper">
+                <ScoreChart />
+              </div>
             </Col>
           </Row>
 
-          {/* Pie Chart */}
           <Row>
             <Col>
-              <AgentPieChart />
+              <div className="qa-wrapper">
+                <AgentPieChart />
+              </div>
             </Col>
           </Row>
         </>

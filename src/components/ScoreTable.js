@@ -1,4 +1,3 @@
-// src/components/ScoreTable.js
 import React, { useEffect, useState } from 'react';
 import { db } from '../firebase/config';
 import {
@@ -20,11 +19,26 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
+const originalGuidelines = [
+  "Agent is ready - and available - to receive call",
+  "Must open the conversation with correct introduction.",
+  "Acknowledge Guests request, reiterating guests needs.",
+  "Must confirm and provide all relevant information to the caller.",
+  "Call Efficiency and Expectations",
+  "Must explore and find all solutions/alternatives for caller's needs and issues.",
+  "TELEPHONE TECHNIQUES: Must be professional throughout the conversation avoiding jargon/slang/abbreviations",
+  "Must properly document notes.",
+  "Must recap the customer of all relevant information and the possible outcomes of their request setting correct expectations."
+];
+
+const isOriginal = (text) => originalGuidelines.includes(text);
+
 function ScoreTable({ user }) {
   const [entries, setEntries] = useState([]);
   const [filterAgent, setFilterAgent] = useState('');
   const [filterCenter, setFilterCenter] = useState('');
   const [filterDate, setFilterDate] = useState('');
+  const [filterType, setFilterType] = useState('');
   const [editEntry, setEditEntry] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [message, setMessage] = useState('');
@@ -41,20 +55,10 @@ function ScoreTable({ user }) {
     return (
       (filterAgent ? entry.agent.toLowerCase().includes(filterAgent.toLowerCase()) : true) &&
       (filterCenter ? entry.center === filterCenter : true) &&
-      (filterDate ? entry.date === filterDate : true)
+      (filterDate ? entry.date === filterDate : true) &&
+      (filterType ? entry.qaType === filterType : true)
     );
   });
-
-  // Summary calculations
-  const totalEvaluations = filteredEntries.length;
-  const uniqueAgents = new Set(filteredEntries.map((e) => e.agent)).size;
-  const latestDate = filteredEntries.reduce((latest, current) =>
-    !latest || new Date(current.date) > new Date(latest) ? current.date : latest, null);
-
-  const centerCount = filteredEntries.reduce((acc, curr) => {
-    acc[curr.center] = (acc[curr.center] || 0) + 1;
-    return acc;
-  }, {});
 
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this entry?')) {
@@ -85,9 +89,15 @@ function ScoreTable({ user }) {
   const exportToXLSX = () => {
     const exportData = filteredEntries.map(entry => ({
       Agent: entry.agent,
+      'QA Type': entry.qaType,
       Date: entry.date,
       'Call Center': entry.center,
       'Final Score': entry.score,
+      'Call ID': entry.callId || '',
+      'Request ID': entry.requestId || '',
+      Itinerary: entry.itinerary || '',
+      'Call Length': entry.callLength || '',
+      Notes: entry.notes || '',
       Markdowns: entry.markdowns?.join(' | ') || '',
       'Submitted By': entry.createdBy,
     }));
@@ -95,10 +105,8 @@ function ScoreTable({ user }) {
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'QA Scores');
-
-    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const fileData = new Blob([excelBuffer], { type: 'application/octet-stream' });
-    saveAs(fileData, `QA-Scores-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    const buffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([buffer], { type: 'application/octet-stream' }), `QA-Scores-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const exportToPDF = () => {
@@ -108,23 +116,24 @@ function ScoreTable({ user }) {
 
     const tableData = filteredEntries.map(entry => [
       entry.agent,
+      entry.qaType,
       entry.date,
       entry.center,
       entry.score,
+      entry.callId || '',
+      entry.requestId || '',
+      entry.itinerary || '',
+      entry.callLength || '',
+      entry.notes || '',
       (entry.markdowns?.join(', ') || '').slice(0, 60),
       entry.createdBy
     ]);
 
     doc.autoTable({
-      head: [['Agent', 'Date', 'Call Center', 'Score', 'Markdowns', 'Submitted By']],
+      head: [['Agent', 'QA Type', 'Date', 'Center', 'Score', 'Call ID', 'Request ID', 'Itinerary', 'Length', 'Notes', 'Markdowns', 'By']],
       body: tableData,
       startY: 20,
-      styles: {
-        halign: 'center',
-        valign: 'middle',
-        fontSize: 10,
-        cellPadding: 3
-      },
+      styles: { fontSize: 9, halign: 'center' },
       theme: 'grid'
     });
 
@@ -136,34 +145,11 @@ function ScoreTable({ user }) {
       <h3 className="mt-5">QA Scores</h3>
       {message && <Alert variant="success">{message}</Alert>}
 
-      {/* Summary block */}
-      <div className="my-4">
-        <h5>📋 Summary</h5>
-        <ul>
-          <li><strong>Total QA Evaluations:</strong> {totalEvaluations}</li>
-          <li><strong>Unique Agents QA’d:</strong> {uniqueAgents}</li>
-          <li><strong>Latest QA Date:</strong> {latestDate || 'N/A'}</li>
-          <li><strong>By Call Center:</strong>
-            <ul>
-              {Object.entries(centerCount).map(([center, count]) => (
-                <li key={center}>{center}: {count}</li>
-              ))}
-            </ul>
-          </li>
-        </ul>
-      </div>
-
-      {/* Export buttons */}
       <div className="mb-3 d-flex gap-2 flex-wrap">
-        <Button variant="success" onClick={exportToXLSX}>
-          Export to Excel (.xlsx)
-        </Button>
-        <Button variant="danger" onClick={exportToPDF}>
-          Export to PDF
-        </Button>
+        <Button variant="success" onClick={exportToXLSX}>Export to Excel (.xlsx)</Button>
+        <Button variant="danger" onClick={exportToPDF}>Export to PDF</Button>
       </div>
 
-      {/* Filters */}
       <Form className="mb-3">
         <Form.Group className="mb-2">
           <Form.Label>Filter by Agent</Form.Label>
@@ -171,7 +157,6 @@ function ScoreTable({ user }) {
             type="text"
             value={filterAgent}
             onChange={(e) => setFilterAgent(e.target.value)}
-            placeholder="Enter agent name"
           />
         </Form.Group>
 
@@ -187,6 +172,15 @@ function ScoreTable({ user }) {
         </Form.Group>
 
         <Form.Group className="mb-2">
+          <Form.Label>Filter by QA Type</Form.Label>
+          <Form.Select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+            <option value="">All</option>
+            <option value="CS">CS</option>
+            <option value="Groups">Groups</option>
+          </Form.Select>
+        </Form.Group>
+
+        <Form.Group className="mb-2">
           <Form.Label>Filter by Date</Form.Label>
           <Form.Control
             type="date"
@@ -196,14 +190,19 @@ function ScoreTable({ user }) {
         </Form.Group>
       </Form>
 
-      {/* QA table */}
       <Table striped bordered hover responsive>
         <thead>
           <tr>
             <th>Agent</th>
+            <th>QA Type</th>
             <th>Date</th>
-            <th>Call Center</th>
+            <th>Center</th>
             <th>Score</th>
+            <th>Call ID</th>
+            <th>Request ID</th>
+            <th>Itinerary</th>
+            <th>Length</th>
+            <th>Notes</th>
             <th>Markdowns</th>
             <th>By</th>
             <th>Actions</th>
@@ -213,15 +212,23 @@ function ScoreTable({ user }) {
           {filteredEntries.map((entry) => (
             <tr key={entry.id}>
               <td>{entry.agent}</td>
+              <td>
+                <strong style={{ color: entry.qaType === 'CS' ? 'green' : 'blue' }}>
+                  {entry.qaType}
+                </strong>
+              </td>
               <td>{entry.date}</td>
               <td>{entry.center}</td>
-              <td style={{ color: entry.score >= 90 ? 'green' : 'red', fontWeight: 'bold' }}>
-                {entry.score}
-              </td>
+              <td style={{ color: entry.score >= 90 ? 'green' : 'red', fontWeight: 'bold' }}>{entry.score}</td>
+              <td>{entry.callId}</td>
+              <td>{entry.requestId}</td>
+              <td>{entry.itinerary}</td>
+              <td>{entry.callLength}</td>
+              <td>{entry.notes}</td>
               <td>
                 <ul className="mb-0">
                   {entry.markdowns?.map((md, i) => (
-                    <li key={i}>{md}</li>
+                    <li key={i} style={{ color: isOriginal(md) ? 'darkgreen' : 'darkblue' }}>{md}</li>
                   ))}
                 </ul>
               </td>
@@ -240,56 +247,6 @@ function ScoreTable({ user }) {
           ))}
         </tbody>
       </Table>
-
-      {/* Edit Modal */}
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Edit QA Entry</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Group className="mb-2">
-            <Form.Label>Agent</Form.Label>
-            <Form.Control
-              type="text"
-              value={editEntry?.agent || ''}
-              onChange={(e) => handleEditChange('agent', e.target.value)}
-            />
-          </Form.Group>
-          <Form.Group className="mb-2">
-            <Form.Label>Date</Form.Label>
-            <Form.Control
-              type="date"
-              value={editEntry?.date || ''}
-              onChange={(e) => handleEditChange('date', e.target.value)}
-            />
-          </Form.Group>
-          <Form.Group className="mb-2">
-            <Form.Label>Call Center</Form.Label>
-            <Form.Select
-              value={editEntry?.center || ''}
-              onChange={(e) => handleEditChange('center', e.target.value)}
-            >
-              <option value="">Select</option>
-              <option value="Teleperformance">Teleperformance</option>
-              <option value="Buwelo">Buwelo</option>
-              <option value="WNS">WNS</option>
-              <option value="Concentrix">Concentrix</option>
-            </Form.Select>
-          </Form.Group>
-          <Form.Group className="mb-2">
-            <Form.Label>Score</Form.Label>
-            <Form.Control
-              type="number"
-              value={editEntry?.score || ''}
-              onChange={(e) => handleEditChange('score', e.target.value)}
-            />
-          </Form.Group>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
-          <Button variant="success" onClick={saveEdit}>Save Changes</Button>
-        </Modal.Footer>
-      </Modal>
     </>
   );
 }
